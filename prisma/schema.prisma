@@ -1,100 +1,88 @@
-
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
   admin
   member
 }
 
-enum StatusTasks {
+enum TaskStatus {
   pending
   in_progress
   completed
 }
 
-enum PriorityTasks {
+enum Priority {
   high
   medium
   low
 }
 
 model Users {
-  id Int @id @default(autoincrement())
-  name String @db.VarChar(100)
-  email String @unique @db.VarChar(150)
-  password String @db.VarChar(255)
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(100)
+  email      String   @unique @db.VarChar(150)
+  password   String   @db.VarChar(255)
+  role       Role
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  role UserRole @default(member)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime? @updatedAt @map("updated_at")
-  @@map("users")
+  teamMembers TeamsMembers[]
+  tasks       Tasks[]          @relation("UserTasks")
+  history     TasksHistory[]
 }
 
 model Teams {
-  id Int @id @default(autoincrement())
-  name String @db.VarChar(100)
-  description String
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime? @updatedAt @map("updated_at")
-  @@map("teams")
-
+  members TeamsMembers[]
+  tasks   Tasks[]
 }
 
 model TeamsMembers {
-  id Int @id @default(autoincrement())
-  userId Int @map("user_id")
-  teamId Int @map("team_id")
-  description String
-
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  teamId    Int
+  createdAt DateTime @default(now())
 
   user Users @relation(fields: [userId], references: [id])
   team Teams @relation(fields: [teamId], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at") 
-
-  @@map("team_members")
-
 }
 
-
 model Tasks {
-  id Int @id @default(autoincrement())
-  title String @db.VarChar(200)
-  description String
+  id          Int        @id @default(autoincrement())
+  title       String     @db.VarChar(200)
+  description String?
+  status      TaskStatus
+  priority    Priority
+  assignedTo  Int
+  teamId      Int
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  status StatusTasks @default(pending)
-  priority PriorityTasks @default(medium)
-
-  assignedTo Int @map("assigned_to")
-  teamId Int @map("team_id")
-
-  user Users @relation(fields: [assignedTo], references: [id])
-  team Teams @relation(fields: [teamId], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime? @updatedAt @map("updated_at")
-
-  @@map("tasks")
-
+  user    Users @relation("UserTasks", fields: [assignedTo], references: [id])
+  team    Teams @relation(fields: [teamId], references: [id])
+  history TasksHistory[]
 }
 
 model TasksHistory {
-  id Int @id @default(autoincrement())
-  taskId Int @map("task_id")
-  changedBy Int @map("changed_by")
-  oldStatus StatusTasks @map("old_status")
-  newStatus StatusTasks @map("new_status")
-  changedAt DateTime @default(now()) @map("changed_at")
+  id         Int        @id @default(autoincrement())
+  taskId     Int
+  changedBy  Int
+  oldStatus  TaskStatus
+  newStatus  TaskStatus
+  changedAt  DateTime   @default(now())
 
-  @@map("tasks_history")
-
+  task Tasks @relation(fields: [taskId], references: [id])
+  user Users @relation(fields: [changedBy], references: [id])
 }
