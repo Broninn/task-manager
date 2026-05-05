@@ -1,24 +1,44 @@
-import { Request, Response } from "express";
-import { hash } from "bcrypt"
-import { z } from "zod"
+import { Request, Response } from 'express';
+import { AppError } from '@/utils/AppError';
+import { prisma } from '@/database/prisma';
+import { hash } from 'bcrypt';
+import { z } from 'zod';
 
 class UsersController {
-    async create(req: Request, res: Response) {
-        const bodySchema = z.object({
-            name: z.string().trim().min(3),
-            email: z.string().trim().email(),
-            password: z.string().min(6)
-        })
+  async create(req: Request, res: Response) {
+    const bodySchema = z.object({
+      name: z.string().trim().min(3),
+      email: z.string().trim().email(),
+      password: z.string().min(6),
+    });
 
-        const { name, email, password } = bodySchema.parse(req.body)
+    const { name, email, password } = bodySchema.parse(req.body);
 
-        const hashedPassword = await hash(password, 8)
+    const userWithSameEmail = await prisma.users.findFirst({
+      where: {
+        email,
+      },
+    });
 
-        
-
-
-        return res.json({message: "ok"})
+    if (userWithSameEmail) {
+      throw new AppError('User with same email already exists');
     }
+
+    const hashedPassword = await hash(password, 8);
+
+    const user = await prisma.users.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: 'member',
+      },
+    });
+
+    const { password: _, ...userWithoutPassword } = user;
+
+    return res.json( userWithoutPassword );
+  }
 }
 
-export { UsersController }
+export { UsersController };
