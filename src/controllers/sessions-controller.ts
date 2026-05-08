@@ -31,12 +31,14 @@ class SessionsController {
 
     const { secret, expiresIn } = authConfig.jwt;
 
-    const token = sign({ role: user.role ?? 'member' }, secret!, {
+    const token = sign({ role: user.role ?? 'member' }, secret, {
       subject: String(user.id),
       expiresIn,
     });
 
-    return res.json(token);
+    const { password: hashedPassword, ...userWithoutPassword } = user
+
+    return res.json({token, user: userWithoutPassword});
   }
 }
 
